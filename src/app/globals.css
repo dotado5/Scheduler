@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #09090b;
+    --card: #ffffff;
+    --card-foreground: #09090b;
+    --border: #e4e4e7;
+    --input: #e4e4e7;
+    --primary: #18181b;
+    --primary-foreground: #fafafa;
+    --muted: #f4f4f5;
+    --muted-foreground: #71717a;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #09090b;
+      --foreground: #fafafa;
+      --card: #18181b;
+      --card-foreground: #fafafa;
+      --border: #27272a;
+      --input: #27272a;
+      --primary: #fafafa;
+      --primary-foreground: #18181b;
+      --muted: #27272a;
+      --muted-foreground: #a1a1aa;
+    }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)] antialiased transition-colors duration-300;
+  }
+}
