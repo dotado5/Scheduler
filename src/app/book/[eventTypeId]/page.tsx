@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { format, addDays, startOfToday, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isBefore, isAfter, addMonths, subMonths, getDay } from "date-fns";
 import { Calendar as CalendarIcon, Clock, ArrowLeft, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { getSlots, createBooking } from "@/app/actions";
 
 export default function BookingPage({ params }: { params: { eventTypeId: string } }) {
   const router = useRouter();
@@ -39,9 +40,7 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
         setSelectedSlot(null); // Reset slot selection
         try {
           const dateString = format(selectedDate, "yyyy-MM-dd");
-          const res = await fetch(`/api/slots?date=${dateString}&eventTypeId=${eventType.id}`);
-          if (!res.ok) throw new Error("Failed to fetch slots");
-          const data = await res.json();
+          const data = await getSlots(eventType.id, dateString);
           setAvailableSlots(data.slots || []);
         } catch (err) {
           console.error(err);
@@ -62,23 +61,17 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
     setError(null);
 
     try {
-      const res = await fetch("/api/bookings/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          topic,
-          date: format(selectedDate, "yyyy-MM-dd"),
-          startTime: selectedSlot,
-          eventTypeId: eventType.id,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        }),
+      const data = await createBooking({
+        name,
+        email,
+        topic,
+        date: format(selectedDate, "yyyy-MM-dd"),
+        startTime: selectedSlot,
+        eventTypeId: eventType.id,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
+      if (!data.success) {
         throw new Error(data.error || "Failed to create booking");
       }
 

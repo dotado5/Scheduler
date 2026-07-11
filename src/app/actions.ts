@@ -1,34 +1,81 @@
-import { NextRequest, NextResponse } from "next/server";
+"use server";
+
 import { getAvailableSlots } from "@/lib/slots";
 import { EVENT_TYPES } from "@/config/event-types";
 import { createCalendarEvent } from "@/lib/google-calendar";
 import { sendEmail } from "@/lib/email";
 import { format } from "date-fns";
 
-export async function POST(request: NextRequest) {
+/**
+ * Returns available time slots for an event type on a given date.
+ * Replaces the former GET /api/slots route.
+ */
+export async function getSlots(
+  eventTypeId: string,
+  date: string
+): Promise<{ slots: string[]; error?: string }> {
+  const eventType = EVENT_TYPES.find((e) => e.id === eventTypeId);
+  if (!eventType) {
+    return { slots: [], error: "Invalid event type" };
+  }
+
   try {
-    const body = await request.json();
-    const { name, email, topic, date, startTime, eventTypeId, timezone } = body;
+    const slots = await getAvailableSlots(date, eventType.duration);
+    return { slots };
+  } catch (error) {
+    console.error("Error fetching slots:", error);
+    return { slots: [], error: "Failed to fetch availability" };
+  }
+}
+
+export interface CreateBookingInput {
+  name: string;
+  email: string;
+  topic: string;
+  date: string;
+  startTime: string;
+  eventTypeId: string;
+  timezone: string;
+}
+
+export type CreateBookingResult =
+  | { success: true; meetLink: string | null; startTime: string; eventId?: string | null }
+  | { success: false; error: string; code?: "slot_taken" | "invalid" };
+
+/**
+ * Creates a booking: re-validates the slot, inserts the Google Calendar event
+ * (with a Meet link), and sends the guest + host emails.
+ * Replaces the former POST /api/bookings/create route.
+ */
+export async function createBooking(
+  input: CreateBookingInput
+): Promise<CreateBookingResult> {
+  try {
+    const { name, email, topic, date, startTime, eventTypeId, timezone } = input;
 
     if (!name || !email || !topic || !date || !startTime || !eventTypeId || !timezone) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return { success: false, error: "Missing required fields", code: "invalid" };
     }
 
     const eventType = EVENT_TYPES.find((e) => e.id === eventTypeId);
     if (!eventType) {
-      return NextResponse.json({ error: "Invalid event type" }, { status: 400 });
+      return { success: false, error: "Invalid event type", code: "invalid" };
     }
 
     // 1. Re-validate slot availability to prevent race conditions
     const slots = await getAvailableSlots(date, eventType.duration);
     if (!slots.includes(startTime)) {
-      return NextResponse.json({ error: "This time slot is no longer available. Please select another time." }, { status: 409 });
+      return {
+        success: false,
+        error: "This time slot is no longer available. Please select another time.",
+        code: "slot_taken",
+      };
     }
 
     // 2. Create Google Calendar Event
     const startObj = new Date(startTime);
     const endObj = new Date(startObj.getTime() + eventType.duration * 60000);
-    
+
     const eventSummary = `${eventType.title} with ${name}`;
     const eventDescription = `Guest: ${name} (${email})\nTopic: ${topic}\n\nBooked via Personal Scheduler.`;
 
@@ -40,7 +87,7 @@ export async function POST(request: NextRequest) {
       guestEmail: email,
     });
 
-    const meetLink = gcalEvent.hangoutLink;
+    const meetLink = gcalEvent.hangoutLink ?? null;
     if (!meetLink) {
       console.warn("Google Meet link was not generated. Ensure conferenceDataVersion is set and scopes are correct.");
     }
@@ -92,16 +139,15 @@ export async function POST(request: NextRequest) {
       `,
     });
 
-    // 4. Return success to client
-    return NextResponse.json({ 
-      success: true, 
-      meetLink, 
-      startTime: startTime,
-      eventId: gcalEvent.id
-    });
-
+    // 4. Return success
+    return {
+      success: true,
+      meetLink,
+      startTime,
+      eventId: gcalEvent.id,
+    };
   } catch (error) {
     console.error("Booking error:", error);
-    return NextResponse.json({ error: "An error occurred while creating the booking" }, { status: 500 });
+    return { success: false, error: "An error occurred while creating the booking" };
   }
 }
