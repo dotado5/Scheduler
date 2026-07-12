@@ -14,6 +14,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: "Invalid email address format" }, { status: 400 });
+    }
+
     const eventType = EVENT_TYPES.find((e) => e.id === eventTypeId);
     if (!eventType) {
       return NextResponse.json({ error: "Invalid event type" }, { status: 400 });
