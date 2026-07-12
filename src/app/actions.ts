@@ -12,7 +12,7 @@ import { format } from "date-fns";
  */
 export async function getSlots(
   eventTypeId: string,
-  date: string
+  date: string,
 ): Promise<{ slots: string[]; error?: string }> {
   const eventType = EVENT_TYPES.find((e) => e.id === eventTypeId);
   if (!eventType) {
@@ -39,7 +39,12 @@ export interface CreateBookingInput {
 }
 
 export type CreateBookingResult =
-  | { success: true; meetLink: string | null; startTime: string; eventId?: string | null }
+  | {
+      success: true;
+      meetLink: string | null;
+      startTime: string;
+      eventId?: string | null;
+    }
   | { success: false; error: string; code?: "slot_taken" | "invalid" };
 
 /**
@@ -48,18 +53,26 @@ export type CreateBookingResult =
  * Replaces the former POST /api/bookings/create route.
  */
 export async function createBooking(
-  input: CreateBookingInput
+  input: CreateBookingInput,
 ): Promise<CreateBookingResult> {
   try {
-    const { name, email, topic, date, startTime, eventTypeId, timezone } = input;
+    const { name, email, topic, date, startTime, eventTypeId, timezone } =
+      input;
 
-    if (!name || !email || !topic || !date || !startTime || !eventTypeId || !timezone) {
-      return { success: false, error: "Missing required fields", code: "invalid" };
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Invalid email address format" }, { status: 400 });
+    if (
+      !name ||
+      !email ||
+      !topic ||
+      !date ||
+      !startTime ||
+      !eventTypeId ||
+      !timezone
+    ) {
+      return {
+        success: false,
+        error: "Missing required fields",
+        code: "invalid",
+      };
     }
 
     const eventType = EVENT_TYPES.find((e) => e.id === eventTypeId);
@@ -72,7 +85,8 @@ export async function createBooking(
     if (!slots.includes(startTime)) {
       return {
         success: false,
-        error: "This time slot is no longer available. Please select another time.",
+        error:
+          "This time slot is no longer available. Please select another time.",
         code: "slot_taken",
       };
     }
@@ -94,7 +108,9 @@ export async function createBooking(
 
     const meetLink = gcalEvent.hangoutLink ?? null;
     if (!meetLink) {
-      console.warn("Google Meet link was not generated. Ensure conferenceDataVersion is set and scopes are correct.");
+      console.warn(
+        "Google Meet link was not generated. Ensure conferenceDataVersion is set and scopes are correct.",
+      );
     }
 
     // 3. Send Emails
@@ -114,13 +130,17 @@ export async function createBooking(
           <p style="font-size: 1.1em; background: #f4f4f5; padding: 12px; border-radius: 8px;">
             <strong>${formattedStartTime}</strong>
           </p>
-          ${meetLink ? `
+          ${
+            meetLink
+              ? `
           <div style="margin: 24px 0;">
             <a href="${meetLink}" style="background: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
               Join Google Meet
             </a>
           </div>
-          ` : ""}
+          `
+              : ""
+          }
           <p>Topic: ${topic}</p>
           <p>Looking forward to it!</p>
         </div>
@@ -153,6 +173,9 @@ export async function createBooking(
     };
   } catch (error) {
     console.error("Booking error:", error);
-    return { success: false, error: "An error occurred while creating the booking" };
+    return {
+      success: false,
+      error: "An error occurred while creating the booking",
+    };
   }
 }
