@@ -3,10 +3,32 @@
 import { EVENT_TYPES } from "@/config/event-types";
 import { notFound, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { format, addDays, startOfToday, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isBefore, isAfter, addMonths, subMonths, getDay } from "date-fns";
+import {
+  format,
+  addDays,
+  startOfToday,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  isBefore,
+  isAfter,
+  addMonths,
+  subMonths,
+  getDay,
+} from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { Calendar as CalendarIcon, Clock, ArrowLeft, Loader2, ChevronLeft, ChevronRight, Globe } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  ArrowLeft,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+} from "lucide-react";
 import Link from "next/link";
+import { getSlots, createBooking } from "@/app/actions";
 
 const COMMON_TIMEZONES = [
   "America/New_York",
@@ -28,7 +50,11 @@ const COMMON_TIMEZONES = [
   "UTC",
 ];
 
-export default function BookingPage({ params }: { params: { eventTypeId: string } }) {
+export default function BookingPage({
+  params,
+}: {
+  params: { eventTypeId: string };
+}) {
   const router = useRouter();
   const eventType = EVENT_TYPES.find((e) => e.id === params.eventTypeId);
 
@@ -37,7 +63,9 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
   }
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(startOfMonth(startOfToday()));
+  const [currentMonth, setCurrentMonth] = useState(
+    startOfMonth(startOfToday()),
+  );
 
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
@@ -71,9 +99,7 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
         setSelectedSlot(null); // Reset slot selection
         try {
           const dateString = format(selectedDate, "yyyy-MM-dd");
-          const res = await fetch(`/api/slots?date=${dateString}&eventTypeId=${eventType.id}`);
-          if (!res.ok) throw new Error("Failed to fetch slots");
-          const data = await res.json();
+          const data = await getSlots(eventType.id, dateString);
           setAvailableSlots(data.slots || []);
         } catch (err) {
           console.error(err);
@@ -115,28 +141,24 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
     setError(null);
 
     try {
-      const res = await fetch("/api/bookings/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          topic,
-          date: format(selectedDate, "yyyy-MM-dd"),
-          startTime: selectedSlot,
-          eventTypeId: eventType.id,
-          timezone: selectedTimezone,
-        }),
+      const data = await createBooking({
+        name,
+        email,
+        topic,
+        date: format(selectedDate, "yyyy-MM-dd"),
+        startTime: selectedSlot,
+        eventTypeId: eventType.id,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
+      if (!data.success) {
         throw new Error(data.error || "Failed to create booking");
       }
 
       // Redirect to confirmation page
-      router.push(`/book/${eventType.id}/confirmed?startTime=${encodeURIComponent(selectedSlot)}&meetLink=${encodeURIComponent(data.meetLink || "")}&timezone=${encodeURIComponent(selectedTimezone)}`);
+      router.push(
+        `/book/${eventType.id}/confirmed?startTime=${encodeURIComponent(selectedSlot)}&meetLink=${encodeURIComponent(data.meetLink || "")}&timezone=${encodeURIComponent(selectedTimezone)}`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -155,16 +177,20 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
 
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
-      <Link href="/" className="inline-flex items-center text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors mb-5">
+      <Link
+        href="/"
+        className="inline-flex items-center text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors mb-5"
+      >
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to meeting types
       </Link>
 
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm grid grid-cols-1 md:grid-cols-12">
-
         {/* Left Side Panel - Event Info (col-span-3) */}
         <div className="p-6 md:p-8 md:col-span-3 border-b md:border-b-0 md:border-r border-[var(--border)] bg-[var(--muted)]/30 flex flex-col justify-between">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold mb-2">{eventType.title}</h1>
+            <h1 className="text-xl md:text-2xl font-bold mb-2">
+              {eventType.title}
+            </h1>
             <div className="flex items-center text-[var(--muted-foreground)] mb-3 space-x-2 text-xs md:text-sm">
               <Clock className="w-4 h-4" />
               <span className="font-medium">{eventType.duration} minutes</span>
@@ -176,12 +202,22 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
 
           {selectedDate && selectedSlot && (
             <div className="mt-8 p-3 bg-[var(--background)] border border-[var(--border)] rounded-xl">
-              <p className="text-[10px] font-semibold uppercase text-[var(--muted-foreground)] mb-1">Selected Time</p>
+              <p className="text-[10px] font-semibold uppercase text-[var(--muted-foreground)] mb-1">
+                Selected Time
+              </p>
               <p className="font-semibold text-sm md:text-base">
-                {formatInTimeZone(new Date(selectedSlot), selectedTimezone, "EEEE, MMMM d, yyyy")}
+                {formatInTimeZone(
+                  new Date(selectedSlot),
+                  selectedTimezone,
+                  "EEEE, MMMM d, yyyy",
+                )}
               </p>
               <p className="text-[var(--primary)] font-bold text-sm md:text-base mt-0.5">
-                {formatInTimeZone(new Date(selectedSlot), selectedTimezone, "h:mm a")}
+                {formatInTimeZone(
+                  new Date(selectedSlot),
+                  selectedTimezone,
+                  "h:mm a",
+                )}
               </p>
             </div>
           )}
@@ -195,11 +231,14 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
               <div className="sm:col-span-7 space-y-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold flex items-center">
-                    <CalendarIcon className="mr-2 w-4 h-4 text-[var(--muted-foreground)]" /> Select a Date
+                    <CalendarIcon className="mr-2 w-4 h-4 text-[var(--muted-foreground)]" />{" "}
+                    Select a Date
                   </h2>
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                      onClick={() =>
+                        setCurrentMonth(subMonths(currentMonth, 1))
+                      }
                       disabled={isBefore(currentMonth, startOfMonth(today))}
                       className="p-1.5 rounded-full hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -209,7 +248,9 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                       {format(currentMonth, "MMMM yyyy")}
                     </span>
                     <button
-                      onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                      onClick={() =>
+                        setCurrentMonth(addMonths(currentMonth, 1))
+                      }
                       disabled={isAfter(currentMonth, maxDate)}
                       className="p-1.5 rounded-full hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -219,11 +260,16 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                 </div>
 
                 <div className="grid grid-cols-7 gap-1 text-center mb-1">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                    <div key={day} className="text-xs font-semibold text-[var(--muted-foreground)] py-1 uppercase">
-                      {day}
-                    </div>
-                  ))}
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div
+                        key={day}
+                        className="text-xs font-semibold text-[var(--muted-foreground)] py-1 uppercase"
+                      >
+                        {day}
+                      </div>
+                    ),
+                  )}
                 </div>
 
                 <div className="grid grid-cols-7 gap-1">
@@ -232,8 +278,10 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                   ))}
 
                   {daysInMonth.map((date) => {
-                    const isDisabled = isBefore(date, today) || isAfter(date, maxDate);
-                    const isSelected = selectedDate && isSameDay(date, selectedDate);
+                    const isDisabled =
+                      isBefore(date, today) || isAfter(date, maxDate);
+                    const isSelected =
+                      selectedDate && isSameDay(date, selectedDate);
                     const isCurrentDay = isSameDay(date, today);
 
                     return (
@@ -259,12 +307,15 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
               <div className="sm:col-span-5 border-t sm:border-t-0 sm:border-l border-[var(--border)] pt-6 sm:pt-0 sm:pl-6 flex flex-col justify-between h-full min-h-[320px]">
                 <div className="space-y-4">
                   <h3 className="font-semibold text-base">
-                    {selectedDate ? `Available Time for ${format(selectedDate, "MMM d")}` : "Select a Time"}
+                    {selectedDate
+                      ? `Available Time for ${format(selectedDate, "MMM d")}`
+                      : "Select a Time"}
                   </h3>
 
                   {isLoadingSlots ? (
                     <div className="flex items-center justify-center py-12 text-[var(--muted-foreground)]">
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />{" "}
+                      Loading...
                     </div>
                   ) : selectedDate ? (
                     availableSlots.length > 0 ? (
@@ -275,7 +326,11 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                             onClick={() => setSelectedSlot(slot)}
                             className="w-full py-2.5 px-3 rounded-xl border border-[var(--border)] text-center font-medium hover:border-[var(--primary)] hover:bg-[var(--muted)] transition-all outline-none text-xs"
                           >
-                            {formatInTimeZone(new Date(slot), selectedTimezone, "h:mm a")}
+                            {formatInTimeZone(
+                              new Date(slot),
+                              selectedTimezone,
+                              "h:mm a",
+                            )}
                           </button>
                         ))}
                       </div>
@@ -303,7 +358,8 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                   >
                     {timezoneList.map((tz) => (
                       <option key={tz} value={tz}>
-                        {tz.replace(/_/g, " ")} (GMT{formatInTimeZone(new Date(), tz, "xxx")})
+                        {tz.replace(/_/g, " ")} (GMT
+                        {formatInTimeZone(new Date(), tz, "xxx")})
                       </option>
                     ))}
                   </select>
@@ -330,7 +386,12 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                 )}
 
                 <div className="space-y-1">
-                  <label htmlFor="name" className="text-xs font-semibold text-[var(--muted-foreground)]">Name</label>
+                  <label
+                    htmlFor="name"
+                    className="text-xs font-semibold text-[var(--muted-foreground)]"
+                  >
+                    Name
+                  </label>
                   <input
                     id="name"
                     required
@@ -343,26 +404,39 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="email" className="text-xs font-semibold text-[var(--muted-foreground)]">Email</label>
+                  <label
+                    htmlFor="email"
+                    className="text-xs font-semibold text-[var(--muted-foreground)]"
+                  >
+                    Email
+                  </label>
                   <input
                     id="email"
                     required
                     type="email"
                     value={email}
                     onChange={(e) => handleEmailChange(e.target.value)}
-                    className={`w-full p-2.5 rounded-xl border bg-[var(--background)] focus:outline-none focus:ring-2 transition-shadow text-sm ${emailError
+                    className={`w-full p-2.5 rounded-xl border bg-[var(--background)] focus:outline-none focus:ring-2 transition-shadow text-sm ${
+                      emailError
                         ? "border-red-500 focus:ring-red-500/50"
                         : "border-[var(--border)] focus:ring-[var(--primary)]"
-                      }`}
+                    }`}
                     placeholder="jane@example.com"
                   />
                   {emailError && (
-                    <p className="text-red-500 text-xs mt-1 font-medium">{emailError}</p>
+                    <p className="text-red-500 text-xs mt-1 font-medium">
+                      {emailError}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="topic" className="text-xs font-semibold text-[var(--muted-foreground)]">Topic / Reason for meeting</label>
+                  <label
+                    htmlFor="topic"
+                    className="text-xs font-semibold text-[var(--muted-foreground)]"
+                  >
+                    Topic / Reason for meeting
+                  </label>
                   <textarea
                     id="topic"
                     required
@@ -380,14 +454,18 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                   className="w-full py-3 px-5 mt-4 rounded-xl font-bold text-[var(--primary-foreground)] bg-[var(--primary)] hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center shadow-sm text-sm"
                 >
                   {isSubmitting ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Confirming...</>
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                      Confirming...
+                    </>
                   ) : (
                     "Confirm Booking"
                   )}
                 </button>
 
                 <p className="text-center text-[10px] text-[var(--muted-foreground)] mt-4">
-                  By confirming, you will receive an email invitation with a Google Meet link.
+                  By confirming, you will receive an email invitation with a
+                  Google Meet link.
                 </p>
               </form>
             </div>
