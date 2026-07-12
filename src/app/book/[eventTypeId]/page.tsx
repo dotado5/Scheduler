@@ -156,11 +156,11 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
       <Link href="/" className="inline-flex items-center text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors mb-5">
-        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Event Types
+        <ArrowLeft className="w-4 h-4 mr-2" /> Back to meeting types
       </Link>
 
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm grid grid-cols-1 md:grid-cols-12">
-        
+
         {/* Left Side Panel - Event Info (col-span-3) */}
         <div className="p-6 md:p-8 md:col-span-3 border-b md:border-b-0 md:border-r border-[var(--border)] bg-[var(--muted)]/30 flex flex-col justify-between">
           <div>
@@ -173,7 +173,7 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
               {eventType.description}
             </p>
           </div>
-          
+
           {selectedDate && selectedSlot && (
             <div className="mt-8 p-3 bg-[var(--background)] border border-[var(--border)] rounded-xl">
               <p className="text-[10px] font-semibold uppercase text-[var(--muted-foreground)] mb-1">Selected Time</p>
@@ -198,7 +198,7 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                     <CalendarIcon className="mr-2 w-4 h-4 text-[var(--muted-foreground)]" /> Select a Date
                   </h2>
                   <div className="flex items-center space-x-2">
-                    <button 
+                    <button
                       onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
                       disabled={isBefore(currentMonth, startOfMonth(today))}
                       className="p-1.5 rounded-full hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -208,7 +208,7 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                     <span className="font-medium min-w-[90px] text-center text-xs md:text-sm">
                       {format(currentMonth, "MMMM yyyy")}
                     </span>
-                    <button 
+                    <button
                       onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
                       disabled={isAfter(currentMonth, maxDate)}
                       className="p-1.5 rounded-full hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -225,12 +225,12 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="grid grid-cols-7 gap-1">
                   {emptyDays.map((empty) => (
                     <div key={`empty-${empty}`} className="p-2" />
                   ))}
-                  
+
                   {daysInMonth.map((date) => {
                     const isDisabled = isBefore(date, today) || isAfter(date, maxDate);
                     const isSelected = selectedDate && isSameDay(date, selectedDate);
@@ -259,9 +259,9 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
               <div className="sm:col-span-5 border-t sm:border-t-0 sm:border-l border-[var(--border)] pt-6 sm:pt-0 sm:pl-6 flex flex-col justify-between h-full min-h-[320px]">
                 <div className="space-y-4">
                   <h3 className="font-semibold text-base">
-                    {selectedDate ? `Times for ${format(selectedDate, "MMM d")}` : "Select a Time"}
+                    {selectedDate ? `Available Time for ${format(selectedDate, "MMM d")}` : "Select a Time"}
                   </h3>
-                  
+
                   {isLoadingSlots ? (
                     <div className="flex items-center justify-center py-12 text-[var(--muted-foreground)]">
                       <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
@@ -314,7 +314,7 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
             <div className="animate-in slide-in-from-right-4 fade-in">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 pb-4 border-b border-[var(--border)]">
                 <h2 className="text-xl font-bold">Your Details</h2>
-                <button 
+                <button
                   onClick={() => setSelectedSlot(null)}
                   className="mt-2 sm:mt-0 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] underline underline-offset-4 transition-colors"
                 >
@@ -328,7 +328,7 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                     {error}
                   </div>
                 )}
-                
+
                 <div className="space-y-1">
                   <label htmlFor="name" className="text-xs font-semibold text-[var(--muted-foreground)]">Name</label>
                   <input
@@ -350,11 +350,10 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                     type="email"
                     value={email}
                     onChange={(e) => handleEmailChange(e.target.value)}
-                    className={`w-full p-2.5 rounded-xl border bg-[var(--background)] focus:outline-none focus:ring-2 transition-shadow text-sm ${
-                      emailError 
-                        ? "border-red-500 focus:ring-red-500/50" 
+                    className={`w-full p-2.5 rounded-xl border bg-[var(--background)] focus:outline-none focus:ring-2 transition-shadow text-sm ${emailError
+                        ? "border-red-500 focus:ring-red-500/50"
                         : "border-[var(--border)] focus:ring-[var(--primary)]"
-                    }`}
+                      }`}
                     placeholder="jane@example.com"
                   />
                   {emailError && (
@@ -386,7 +385,7 @@ export default function BookingPage({ params }: { params: { eventTypeId: string 
                     "Confirm Booking"
                   )}
                 </button>
-                
+
                 <p className="text-center text-[10px] text-[var(--muted-foreground)] mt-4">
                   By confirming, you will receive an email invitation with a Google Meet link.
                 </p>
