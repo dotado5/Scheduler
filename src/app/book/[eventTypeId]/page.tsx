@@ -2,7 +2,7 @@
 
 import { EVENT_TYPES } from "@/config/event-types";
 import { notFound, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   format,
   addDays,
@@ -92,25 +92,61 @@ export default function BookingPage({
     setSelectedTimezone(userTz || "UTC");
   }, []);
 
+  // Fetch available slots for the selected date. `silent` skips the loader and
+  // preserves the current list on error — used by the background auto-sync so it
+  // never flashes a spinner or wipes the grid on a transient hiccup.
+  const fetchSlots = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!selectedDate) return;
+      if (!silent) setIsLoadingSlots(true);
+      try {
+        const dateString = format(selectedDate, "yyyy-MM-dd");
+        const data = await getSlots(eventType.id, dateString);
+        setAvailableSlots(data.slots || []);
+      } catch (err) {
+        console.error(err);
+        if (!silent) setAvailableSlots([]);
+      } finally {
+        if (!silent) setIsLoadingSlots(false);
+      }
+    },
+    [selectedDate, eventType.id],
+  );
+
+  // On date change: reset any prior slot choice and load with the loader shown.
   useEffect(() => {
-    if (selectedDate) {
-      const fetchSlots = async () => {
-        setIsLoadingSlots(true);
-        setSelectedSlot(null); // Reset slot selection
-        try {
-          const dateString = format(selectedDate, "yyyy-MM-dd");
-          const data = await getSlots(eventType.id, dateString);
-          setAvailableSlots(data.slots || []);
-        } catch (err) {
-          console.error(err);
-          setAvailableSlots([]);
-        } finally {
-          setIsLoadingSlots(false);
-        }
-      };
-      fetchSlots();
-    }
-  }, [selectedDate, eventType.id]);
+    if (!selectedDate) return;
+    setSelectedSlot(null);
+    fetchSlots();
+  }, [selectedDate, fetchSlots]);
+
+  // Auto-sync availability against the host's live calendar — no manual refresh.
+  // Polls every 30s and refetches the instant the guest returns to the tab.
+  // Pauses while the tab is hidden or the guest is filling the form (slot chosen).
+  useEffect(() => {
+    if (!selectedDate || selectedSlot) return;
+
+    const SYNC_INTERVAL_MS = 30_000;
+    const syncIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        fetchSlots({ silent: true });
+      }
+    };
+
+    const interval = setInterval(syncIfVisible, SYNC_INTERVAL_MS);
+    document.addEventListener("visibilitychange", syncIfVisible);
+    window.addEventListener("focus", syncIfVisible);
+    // Refetch when the connection comes back, so guests on flaky networks
+    // aren't left staring at a stale list captured before they dropped offline.
+    window.addEventListener("online", syncIfVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", syncIfVisible);
+      window.removeEventListener("focus", syncIfVisible);
+      window.removeEventListener("online", syncIfVisible);
+    };
+  }, [selectedDate, selectedSlot, fetchSlots]);
 
   const handleEmailChange = (val: string) => {
     setEmail(val);
